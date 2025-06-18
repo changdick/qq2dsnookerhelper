@@ -44,6 +44,9 @@ class Line:
 
     def __str__(self):
         return '%s %s'%(self.p1, self)
+    
+    def midpoint(self):
+        return (self.x1 + self.x2) / 2, (self.y1 + self.y2) / 2
 
 class Path:
     def __init__(self, frm, to, arc, l, layer=0):
@@ -69,7 +72,7 @@ class Path:
         x, y, arc, r = self.frm.x, self.frm.y, self.arc, self.frm.r*2
         x1, y1 = cos(arc.a1+pi) * r + x, sin(arc.a1+pi) * r + y
         x2, y2 = cos(arc.a2+pi) * r + x, sin(arc.a2+pi) * r + y
-        self.line = Line(x2, y2, x1, y1)
+        self.line = Line(x2, y2, x1, y1)                       # x1, y1 和 x2, y2 是两条边界射线的终点
         return self.line
 
     def get_point(self):
@@ -77,7 +80,7 @@ class Path:
         x, y, arc, r = self.frm.x, self.frm.y, self.arc, self.frm.r
         x, y = cos(arc.mid()) * self.l + x, sin(arc.mid()) * self.l + y
         self.point = (x, y)
-        return self.point
+        return self.point   # 返回终点坐标
 
 class Ball:
     def __init__(self, x, y, r, tp):
@@ -87,20 +90,22 @@ class Ball:
         return ((ball.x - self.x)**2 + (ball.y - self.y)**2)**0.5
 
     def to_line(self, line, buf=False):
+        # 返回： 一个Path对象，球到一个线段的路径
         isline = isinstance(line, Line)
-        ln = line if isline else line.get_line()
-        dv1_x, dv1_y = ln.x1 - self.x, ln.y1 - self.y
-        dv2_x, dv2_y = ln.x2 - self.x, ln.y2 - self.y
-        a1 = anglex(dv1_x, dv1_y)
-        a2 = anglex(dv2_x, dv2_y)
-        l1 = (dv1_x**2 + dv1_y**2)**0.5
-        l2 = (dv2_x**2 + dv2_y**2)**0.5
+        ln = line if isline else line.get_line()        # 这里传进来的line，有可能是line对象，也可能是Path对象
+        dv1_x, dv1_y = ln.x1 - self.x, ln.y1 - self.y   # 球心到线段点1的向量
+        dv2_x, dv2_y = ln.x2 - self.x, ln.y2 - self.y   # 球心到线段点2的向量
+        a1 = anglex(dv1_x, dv1_y)                      
+        a2 = anglex(dv2_x, dv2_y)                       # 根据向量，可以求出两个角度
+        l1 = (dv1_x**2 + dv1_y**2)**0.5                 # 球心到线段点1的距离
+        l2 = (dv2_x**2 + dv2_y**2)**0.5                 # 球心到线段点2的距离
         if isline:
+            # 如果目标是线段（如袋口），调整角度考虑球的半径
             a1 += asin(min(self.r / l1, 1))
             a2 -= asin(min(self.r / l2, 1))
         arc = Arc(a1, a2)
-        layer = 0 if isline else line.layer + 1
-        return Path(self, line, arc, (l1+l2)/2, layer)
+        layer = 0 if isline else line.layer + 1          
+        return Path(self, line, arc, (l1+l2)/2, layer)    # 长度用到两个端点的长度的平均来作为长度
 
 class Table:
     def __init__(self, loc, size, back, balls, tp='black8'):
@@ -127,20 +132,20 @@ class Table:
 
     def show(self):
         import numpy as np
-        plt.imshow(self.back)
+        plt.imshow(self.back)  # 画球桌背景部分，游戏窗口的台球桌区域 
         angs = np.linspace(0, np.pi*2, 36)
         rs, cs = np.cos(angs), np.sin(angs)
         lut = np.array([(255,255,255), (255,0,0),
             (255,255,0), (0,255,0), (128,0,0),
             (0,0,255), (255,128,128), (50,50,50)])/255
         for i in self.balls:
-            plt.plot(cs*i.r+i.y, rs*i.r+i.x, c=lut[i.tp])
+            plt.plot(cs*i.r+i.y, rs*i.r+i.x, c=lut[i.tp])  # 在图像上绘制每个球的轮廓, cs,rs都是向量，向量化绘图，一次画36个点，正好构成一个圆，标出轮廓
         h, w, mar = *self.size, self.mar
         plt.plot([mar, mar, w-mar, w-mar, mar],
-                 [mar, h-mar, h-mar, mar, mar], 'blue')
+                 [mar, h-mar, h-mar, mar, mar], 'blue') # 画球桌边框
         for line in self.pocket:
             r1, c1, r2, c2 = line.x1, line.y1, line.x2, line.y2
-            plt.plot([c1,c2], [r1,r2], 'white')
+            plt.plot([c1,c2], [r1,r2], 'white')    # 画球袋口的线段
         for p in self.paths: self.plot_path(p)     # path是进球的线
         if len(self.hitpts)>0:
             plt.plot(self.hitpts[:,1], self.hitpts[:,0], 'r.')  # hitpts是一个点
@@ -187,11 +192,11 @@ class Table:
                     if cur.layer==0:
                         cur.layer=-10
         self.paths = [i for i in self.paths if i.layer<0]
-        pts = [i for i in self.paths if i.frm.tp==0]
+        pts = [i for i in self.paths if i.frm.tp==0]   # 母球可以直接击打目标球的path
         rst = []
         for i in pts:
             x = cos(i.arc.mid()) * i.l + i.frm.x
-            y = sin(i.arc.mid()) * i.l + i.frm.y
+            y = sin(i.arc.mid()) * i.l + i.frm.y    # 母球的坐标 + 合法角度*path长度 = 击球点坐标
             # x, y, type, time, angle
             rst.append([x, y, i.to.frm.tp, abs(i.layer), min(i.to.arc.value()*1000, 100)])
         self.hitpts = np.array(rst)
