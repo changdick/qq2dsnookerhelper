@@ -9,7 +9,8 @@ from PIL import ImageGrab, Image
 import numpy as np
 from time import time, sleep
 from numpy.linalg import norm
-from table import Table
+# from table import Table
+from tab1e import Table
 
 import sys
 
@@ -73,7 +74,8 @@ def analysis(img, tp='black8', goal=-1, maxiter=2):
     if isinstance(table, str): 
         return (None, table)
     table = Table(*table, tp)
-    table.solve(goal, maxiter)
+    # table.solve(goal, maxiter)
+    table.solve_simple(goal)
     return (table, '共检测到%s条击球策略'%len(table.hitpts))
 
 def hold(tp='snooker', goal=-1, maxiter=2, call=print):
