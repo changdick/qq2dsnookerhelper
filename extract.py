@@ -6,6 +6,7 @@ import numpy as np
 from numpy.linalg import norm
 import scipy.ndimage as ndimg
 import matplotlib.pyplot as plt
+import cv2
 
 # RGB转换HSV空间
 def rgb2hsv(rgb):
@@ -98,6 +99,44 @@ def find_ground(img, tor=5):
     
     return loc, size, sr, sc, msk[sr, sc]
 
+
+
+
+def find_ground_opencv(img, tor=5):
+    # img: HSV图像的H通道，二维数组
+    r, c = np.array(img.shape[:2]) // 2
+    center = img[r-100:r+100, c-100:c+100]
+    back = np.argmax(np.bincount(center.ravel()))
+    
+    # 背景色掩码
+    msk = (np.abs(img.astype(np.int16) - back) < tor).astype(np.uint8)
+
+    # 连通域标记（返回的 labels 是每个像素的连通域编号）
+    num_labels, labels = cv2.connectedComponents(msk)
+
+    # 每个 label 的像素个数
+    hist = np.bincount(labels.ravel())
+
+    if len(hist) <= 1 or hist[1:].max() < 1e4:
+        return None
+    
+    max_label = 1 + np.argmax(hist[1:])
+    msk_max = (labels == max_label).astype(np.uint8)
+
+    # 找到最大连通区域的边界框
+    contours, _ = cv2.findContours(msk_max, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return None
+
+    x, y, w, h = cv2.boundingRect(contours[0])
+
+    loc = (y, x)  # 注意顺序：行（y）、列（x）
+    size = (h, w)
+    sr = slice(y, y + h)
+    sc = slice(x, x + w)
+
+    return loc, size, sr, sc, msk_max[y:y + h, x:x + w]
+
 # 查找一个球
 def find_one(img, cs, r=16, a=30):
     # 输入的img：二维数组，背景为true，球为false
@@ -129,6 +168,49 @@ def find_ball(img):
     balls = np.array(balls)
     balls[:,2] = balls[:,2].mean()-0.5
     return balls
+
+def find_ball_opencv(img):
+    # img: 背景掩码（背景为True/1，球为False/0）
+    
+    # OpenCV要求uint8类型，背景为255，球为0
+    mask = (img == 1).astype(np.uint8) * 255
+    
+    # 膨胀操作，替代 binary_dilation
+    kernel = np.ones((13, 13), np.uint8)
+    dist = cv2.dilate(mask, kernel)
+
+    # 边界清除
+    dist[0, :] = 0
+    dist[-1, :] = 0
+    dist[:, 0] = 0
+    dist[:, -1] = 0
+
+    # 求非背景区域（原始 img 中球的位置）
+    inv = cv2.bitwise_not(dist)
+
+    # 连通区域标记
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(inv)
+
+    # 忽略背景标签0
+    balls = []
+    for i in range(1, num_labels):
+        x, y, w, h, area = stats[i]
+        cx, cy = centroids[i]
+        if w < 5 or h < 5 or area > 120:  # 可选：排除过小区域
+            continue
+
+        # 尝试拟合圆（替代 find_one）
+        (r, c), ra = find_one(img, (cy, cx))  # 你已有的精细定位逻辑
+        if ra is not None:
+            balls.append([r, c, ra])
+    
+    if len(balls) == 0:
+        return []
+
+    balls = np.array(balls)
+    balls[:, 2] = balls[:, 2].mean() - 0.5
+    return balls
+
 
 # 提取颜色
 def detect_color(img, balls, mode='snooker'):
@@ -169,7 +251,7 @@ def extract_table(img, mode='snooker'):
     """
     #hsv = (rgb2hsv(img[:,:,:3]) * 255).astype(np.uint8)
     hsv = rgb2hsv_lut(img)
-    ground = find_ground(hsv)
+    ground = find_ground_opencv(hsv)
     if ground is None: return '未检测到球桌，请勿遮挡'
     loc, size, sr, sc, back = ground    # find_ground提取出来的五元组 就长这样，back是表示桌面的二维数组，每个元素是这个像素是桌面或不是
     
@@ -180,7 +262,7 @@ def extract_table(img, mode='snooker'):
     msk = np.abs(hsv.astype(np.int16) - bgcolor)<5   
 
 
-    balls = find_ball(msk[sr, sc])  # 在背景中找球，返回一个二维数组，每行是一个球的坐标和半径
+    balls = find_ball_opencv(msk[sr, sc])  # 在背景中找球，返回一个二维数组，每行是一个球的坐标和半径
     if len(balls)==0: return '全部球已入袋'
     tps = detect_color(hsv[sr, sc], balls, mode)
     balls = np.hstack((balls, tps[:,None]))
