@@ -9,17 +9,7 @@ class Ball:
     def __init__(self, x, y, r, tp):
         self.x, self.y, self.r, self.tp = x, y, r, tp
 
-class Line:
-    def __init__(self, x1, y1, x2, y2):
-        self.x1, self.y1 = x1, y1
-        self.x2, self.y2 = x2, y2
 
-    def midpoint(self):
-        return (self.x1 + self.x2) / 2, (self.y1 + self.y2) / 2
-    
-class Pocket:
-    def __init__(self, x,y):
-        self.x, self.y = x, y
 
 
 class Table:
@@ -27,40 +17,28 @@ class Table:
         self.loc, self.size = loc, size
         self.back = back
         self.balls = [Ball(y,x,r,int(tp)) for y, x, r, tp in balls]  # extract模块可以提取出一个r值
-        self.unit = self.size[1]/100
+        BALL_RADIUS = self.balls[0].r  # 重新设置标准半径
+        # self.unit = self.size[1]/100
         self.hitpts = []
-        if tp=='snooker': self.make_pocket(1, 3)
-        self.pockets = [
-            Pocket(24,26),
-            # Pocket(*self.pocket[1].midpoint()),
-            Pocket(12, 492.5),
-            Pocket(24,959),
-            Pocket(496,959),
-            Pocket(509,492.5),
-            Pocket(496,26)
-        ]
+        if tp=='snooker':   
+            # 直接硬编码袋口坐标
+            self.pockets = [
+                (24, 26),      # 左上袋
+                (12, 492.5),    # 中上袋
+                (24, 959),      # 右上袋
+                (496, 959),     # 右下袋
+                (509, 492.5),   # 中下袋
+                (496, 26)       # 左下袋
+            ]
 
-    def make_pocket(self, k1, k2):
-        unit, h, w = self.unit, *self.size
-        mar = unit * k1
-        self.pocket = []
-        for line in [
-            (mar, mar+mar*k2, mar+mar*k2, mar),
-            (mar, w/2+mar*k2, mar, w/2-mar*k2),
-            (mar+mar*k2, w-mar, mar, w-mar-mar*k2),
-            (h-mar, w-mar-mar*k2, h-mar-mar*k2, w-mar),
-            (h-mar, w/2-mar*k2, h-mar, w/2+mar*k2),
-            (h-mar-mar*k2, mar, h-mar, mar+mar*k2),
-        ]:
-            self.pocket.append(Line(*line))
-
+   
     def solve_simple(self, goal=1):
         # cue_ball = next(b for b in self.balls if b.tp == 0)
-        targets = [b for b in self.balls]
+        targets = [b for b in self.balls if b.tp != 0]
         rst = []
 
-        for pocket in self.pockets:
-            px, py = pocket.x, pocket.y
+        for px, py in self.pockets:
+            
             for ball in targets:
                 dx, dy = px - ball.x, py - ball.y
                 norm = (dx**2 + dy**2)**0.5
