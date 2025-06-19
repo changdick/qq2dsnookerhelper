@@ -16,20 +16,34 @@ class Line:
 
     def midpoint(self):
         return (self.x1 + self.x2) / 2, (self.y1 + self.y2) / 2
+    
+class Pocket:
+    def __init__(self, x,y):
+        self.x, self.y = x, y
+
 
 class Table:
     def __init__(self, loc, size, back, balls, tp='snooker'):
         self.loc, self.size = loc, size
         self.back = back
-        self.balls = [Ball(y,x,r,int(tp)) for y, x, r, tp in balls]
+        self.balls = [Ball(y,x,r,int(tp)) for y, x, r, tp in balls]  # extract模块可以提取出一个r值
         self.unit = self.size[1]/100
         self.hitpts = []
         if tp=='snooker': self.make_pocket(1, 3)
+        self.pockets = [
+            Pocket(24,26),
+            # Pocket(*self.pocket[1].midpoint()),
+            Pocket(12, 492.5),
+            Pocket(24,959),
+            Pocket(496,959),
+            Pocket(509,492.5),
+            Pocket(496,26)
+        ]
 
     def make_pocket(self, k1, k2):
         unit, h, w = self.unit, *self.size
         mar = unit * k1
-        self.pockets = []
+        self.pocket = []
         for line in [
             (mar, mar+mar*k2, mar+mar*k2, mar),
             (mar, w/2+mar*k2, mar, w/2-mar*k2),
@@ -38,7 +52,7 @@ class Table:
             (h-mar, w/2-mar*k2, h-mar, w/2+mar*k2),
             (h-mar-mar*k2, mar, h-mar, mar+mar*k2),
         ]:
-            self.pockets.append(Line(*line))
+            self.pocket.append(Line(*line))
 
     def solve_simple(self, goal=1):
         # cue_ball = next(b for b in self.balls if b.tp == 0)
@@ -46,7 +60,7 @@ class Table:
         rst = []
 
         for pocket in self.pockets:
-            px, py = pocket.midpoint()
+            px, py = pocket.x, pocket.y
             for ball in targets:
                 dx, dy = px - ball.x, py - ball.y
                 norm = (dx**2 + dy**2)**0.5
