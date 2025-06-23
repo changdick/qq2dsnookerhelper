@@ -3,7 +3,7 @@ from skimage.io import imread
 import numpy as np
 from math import sin, cos, pi, atan2
 
-BALL_RADIUS = 13.48  # 台球标准半径
+BALL_RADIUS = 13.48 # 台球标准半径
 
 class Ball:
     def __init__(self, x, y, r, tp):
@@ -20,6 +20,7 @@ class Table:
         BALL_RADIUS = self.balls[0].r  # 重新设置标准半径
         # self.unit = self.size[1]/100
         self.hitpts = []
+        self.vpockets = []  # 可选的袋口坐标
         if tp=='snooker':   
             # 直接硬编码袋口坐标
             self.pockets = [
@@ -37,6 +38,7 @@ class Table:
         targets = [b for b in self.balls if b.tp != 0]
         rst = []
 
+
         for px, py in self.pockets:
             
             for ball in targets:
@@ -50,7 +52,21 @@ class Table:
                 # cue_dy = hit_y - cue_ball.y
                 # cue_dist = (cue_dx**2 + cue_dy**2)**0.5
                 # angle = atan2(cue_dy, cue_dx)
-                rst.append([hit_x, hit_y,  -1, 0, 0])
+                rst.append([hit_x, hit_y,  -1, 1, 0])
+        for px, py in self.vpockets:
+            print(f"虚拟袋口: {px}, {py}")
+            for ball in targets:
+                dx, dy = px - ball.x, py - ball.y
+                norm = (dx**2 + dy**2)**0.5
+                if norm == 0: continue
+                dx, dy = dx / norm, dy / norm
+                hit_x = ball.x - dx * BALL_RADIUS * 2
+                hit_y = ball.y - dy * BALL_RADIUS * 2
+                # cue_dx = hit_x - cue_ball.x
+                # cue_dy = hit_y - cue_ball.y
+                # cue_dist = (cue_dx**2 + cue_dy**2)**0.5
+                # angle = atan2(cue_dy, cue_dx)
+                rst.append([hit_x, hit_y,  -1, 2, 0])
 
         self.hitpts = np.array(rst)
 

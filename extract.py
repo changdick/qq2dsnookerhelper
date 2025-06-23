@@ -4,7 +4,7 @@ from skimage import color
 from time import time
 import numpy as np
 from numpy.linalg import norm
-# import scipy.ndimage as ndimg
+import scipy.ndimage as ndimg
 import matplotlib.pyplot as plt
 import cv2
 
@@ -79,25 +79,25 @@ def exactly(O, r, pts):
 
 #a = np.arccos(v[:,0] / norm(v[:,:2], axis=1))
 # 查找背景
-# def find_ground(img, tor=5):
-#     """
-#     注意：此函数输入的img是经rgb2hsv转换，只保留了h通道的图像。 只有2个维度，相当于是二维数组。
+def find_ground(img, tor=5):
+    """
+    注意：此函数输入的img是经rgb2hsv转换，只保留了h通道的图像。 只有2个维度，相当于是二维数组。
 
-#     """
-#     r, c = np.array(img.shape[:2])//2    # r和c是一个数，（r，c）就是坐标值
-#     center = img[r-100:r+100, c-100:c+100]    # 以r和c为中心，上下左右各阔开100的区域，在这个区域中找最多的色调值，这是有效的。 经检查，绿色桌面，色调值就是80，不论哪个分辨率
-#     back = np.argmax(np.bincount(center.ravel()))  # center中最多的色调值，斯诺克绿桌就是80
-#     msk = np.abs(img.astype(np.int16) - back)<tor
-#     lab, n = ndimg.label(msk)
-#     hist = np.bincount(lab.ravel())
-#     if hist[1:].max() < 1e4: return None   # label提取连通区域，为了确认足够大，从而确认是背景
-#     if np.argmax(hist[1:])==0: return None
-#     msk = lab == np.argmax(hist[1:]) + 1
-#     sr, sc = ndimg.find_objects(msk)[0]    # 返回两个切片对象， sr是行上的切片对象，sc是列上的切片对象
-#     loc = sr.start, sc.start                 # 以桌面左上角坐标作为loc ，二元组，左上角坐标
-#     size = sr.stop - loc[0], sc.stop - loc[1]  # 桌面的大小size， size作为一个元组，接受两个值， 二元组，行长度，列长度
+    """
+    r, c = np.array(img.shape[:2])//2    # r和c是一个数，（r，c）就是坐标值
+    center = img[r-100:r+100, c-100:c+100]    # 以r和c为中心，上下左右各阔开100的区域，在这个区域中找最多的色调值，这是有效的。 经检查，绿色桌面，色调值就是80，不论哪个分辨率
+    back = np.argmax(np.bincount(center.ravel()))  # center中最多的色调值，斯诺克绿桌就是80
+    msk = np.abs(img.astype(np.int16) - back)<tor
+    lab, n = ndimg.label(msk)
+    hist = np.bincount(lab.ravel())
+    if hist[1:].max() < 1e4: return None   # label提取连通区域，为了确认足够大，从而确认是背景
+    if np.argmax(hist[1:])==0: return None
+    msk = lab == np.argmax(hist[1:]) + 1
+    sr, sc = ndimg.find_objects(msk)[0]    # 返回两个切片对象， sr是行上的切片对象，sc是列上的切片对象
+    loc = sr.start, sc.start                 # 以桌面左上角坐标作为loc ，二元组，左上角坐标
+    size = sr.stop - loc[0], sc.stop - loc[1]  # 桌面的大小size， size作为一个元组，接受两个值， 二元组，行长度，列长度
     
-#     return loc, size, sr, sc, msk[sr, sc]
+    return loc, size, sr, sc, msk[sr, sc]
 
 
 
@@ -154,20 +154,20 @@ def find_one(img, cs, r=16, a=30):
     return exactly(cs, r, np.array(pts))
 
 # 检测球
-# def find_ball(img):
-#     dist = ndimg.binary_dilation(img, np.ones((13, 13)))
-#     dist[:,[0,-1]] = 0; dist[[0,-1],:] = 0
-#     lab, n = ndimg.label(~dist)
-#     objs = ndimg.find_objects(lab)[1:]
-#     cs = [(i.start+i.stop, j.start+j.stop) for i,j in objs]
-#     balls = []
-#     for i in np.array(cs)/2:
-#         (r, c), ra = find_one(img, i)
-#         if not ra is None: balls.append([r, c, ra])
-#     if len(balls)==0: return balls
-#     balls = np.array(balls)
-#     balls[:,2] = balls[:,2].mean()-0.5
-#     return balls
+def find_ball(img):
+    dist = ndimg.binary_dilation(img, np.ones((13, 13)))
+    dist[:,[0,-1]] = 0; dist[[0,-1],:] = 0
+    lab, n = ndimg.label(~dist)
+    objs = ndimg.find_objects(lab)[1:]
+    cs = [(i.start+i.stop, j.start+j.stop) for i,j in objs]
+    balls = []
+    for i in np.array(cs)/2:
+        (r, c), ra = find_one(img, i)
+        if not ra is None: balls.append([r, c, ra])
+    if len(balls)==0: return balls
+    balls = np.array(balls)
+    balls[:,2] = balls[:,2].mean()-0.5
+    return balls
 
 def find_ball_opencv(img):
     # img: 背景掩码（背景为True/1，球为False/0）

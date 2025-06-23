@@ -74,7 +74,7 @@ def capture_window(hwnd):
     window_height = window_bottom - window_top
     
     # 输出窗口大小信息
-    print(f"GetClientRect 返回: left={left}, top={top}, right={right}, bottom={bottom}")
+    # print(f"GetClientRect 返回: left={left}, top={top}, right={right}, bottom={bottom}")
     
     print(f"窗口信息:")
     print(f"  客户区大小: {client_width}x{client_height} 像素")
@@ -105,15 +105,16 @@ def capture_window(hwnd):
     img.shape = (bmpinfo['bmHeight'], bmpinfo['bmWidth'], 4)
     
     # 清理资源
-    # win32gui.DeleteObject(save_bitmap.GetHandle())
-    # save_dc.DeleteDC()
-    # mfc_dc.DeleteDC()
-    # win32gui.ReleaseDC(hwnd, hwnd_dc)
+    win32gui.DeleteObject(save_bitmap.GetHandle())
+    save_dc.DeleteDC()
+    mfc_dc.DeleteDC()
+    win32gui.ReleaseDC(hwnd, hwnd_dc)
     
     # # 转换为RGB格式
     # img = img[:,:,0:3]
     # img = img[:,:,[2,1,0]] 
     # img = np.ascontiguousarray(img)
+
     img= cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
     return img
 
